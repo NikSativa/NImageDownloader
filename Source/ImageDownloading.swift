@@ -9,12 +9,40 @@ import Cocoa
 #error("unsupported os")
 #endif
 
+public enum ImagePlaceholder {
+    case none
+    case clear
+    case image(Image)
+    case custom((ImageView) -> Void)
+
+    #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+    case imageNamed(String, bundle: Bundle)
+
+    func imageNamed(_ name: String) -> Self {
+        return .imageNamed(name, bundle: .main)
+    }
+
+    #elseif os(macOS)
+    case imageNamed(String)
+    #endif
+
+    #if os(iOS) || os(tvOS) || os(visionOS)
+    @available(iOS 17.0, macOS 14.0, tvOS 17.0, *)
+    func resource(_ res: ImageResource) -> Self {
+        return .custom { view in
+            view.image = UIImage(resource: res)
+        }
+    }
+    #endif
+}
+
 public protocol ImageDownloading {
     var imageCache: ImageCaching? { get }
 
     func download(of info: ImageInfo,
                   for imageView: ImageView,
                   animated animation: ImageAnimation?,
+                  placeholder: ImagePlaceholder,
                   completion: @escaping ImageClosure)
 
     func download(of info: ImageInfo,
@@ -32,28 +60,34 @@ public extension ImageDownloading {
     }
 
     func download(of info: ImageInfo,
-                  for imageView: ImageView) {
+                  for imageView: ImageView,
+                  placeholder: ImagePlaceholder = .none) {
         download(of: info,
                  for: imageView,
                  animated: nil,
+                 placeholder: placeholder,
                  completion: { _ in })
     }
 
     func download(of info: ImageInfo,
                   for imageView: ImageView,
-                  animated animation: ImageAnimation) {
+                  animated animation: ImageAnimation,
+                  placeholder: ImagePlaceholder = .none) {
         download(of: info,
                  for: imageView,
                  animated: animation,
+                 placeholder: placeholder,
                  completion: { _ in })
     }
 
     func download(of info: ImageInfo,
                   for imageView: ImageView,
+                  placeholder: ImagePlaceholder = .none,
                   completion: @escaping ImageClosure) {
         download(of: info,
                  for: imageView,
                  animated: nil,
+                 placeholder: placeholder,
                  completion: completion)
     }
 
@@ -79,6 +113,7 @@ public extension ImageDownloading {
                   priority: ImagePriority = .default,
                   for imageView: ImageView,
                   animated animation: ImageAnimation? = nil,
+                  placeholder: ImagePlaceholder = .none,
                   completion: ImageClosure? = nil) {
         let info = ImageInfo(url: url,
                              cachePolicy: cachePolicy,
@@ -88,6 +123,7 @@ public extension ImageDownloading {
         download(of: info,
                  for: imageView,
                  animated: animation,
+                 placeholder: placeholder,
                  completion: completion ?? { _ in })
     }
 

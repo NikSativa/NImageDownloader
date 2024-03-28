@@ -247,9 +247,31 @@ extension ImageDownloader: ImageDownloading {
     public func download(of info: ImageInfo,
                          for imageView: ImageView,
                          animated animation: ImageAnimation?,
+                         placeholder: ImagePlaceholder,
                          completion: @escaping ImageClosure) {
         guard needDownload(of: info, for: imageView) else {
             return
+        }
+
+        Queue.main.sync {
+            switch placeholder {
+            case .image(let image):
+                imageView.image = image
+            case .clear:
+                imageView.image = nil
+            case .custom(let closure):
+                closure(imageView)
+            case .none:
+                break
+
+            #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+            case .imageNamed(let name, let bundle):
+                imageView.image = Image(named: name, in: bundle, with: nil)
+            #elseif os(macOS)
+            case .imageNamed(let name):
+                imageView.image = Image(named: name)
+            #endif
+            }
         }
 
         add(imageView, for: info.url, completion: completion)
